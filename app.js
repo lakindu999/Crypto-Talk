@@ -1,43 +1,92 @@
 const express = require('express');
+const morgan = require('morgan');
+const mongoose = require('mongoose');
+const Blog = require('./models/blog');
 
 // express app
 const app = express();
 
+//connect to mongodb
+const dbURI = 'mongodb+srv://root:laki@blog.ow3kxjx.mongodb.net/blog?retryWrites=true&w=majority'
+mongoose.connect(dbURI)
+.then((result) => app.listen(3000))
+.catch((err) => console.log(err));
+
+// app.listen(3000);
+
 //register view engine
 app.set('view engine','ejs');
 
-// listen for requests
-app.listen(3000);
+
+//midleware static files 
+app.use(express.static('public'));
+app.use(morgan('dev'));
+app.use((req, res, next) => {
+  res.locals.path = req.path;
+  next();
+});
+
+// mongoose & mongo tests
+app.get('/add-blog', (req, res) => {
+  const blog = new Blog({
+    title: 'new blog',
+    snippet: 'about my new blog',
+    body: 'more about my new blog'
+  })
+
+  blog.save()
+    .then(result => {
+      res.send(result);
+    })
+    .catch(err => {
+      console.log(err);
+    });
+});
+
+app.get('/all-blogs', (req, res) => {
+  Blog.find()
+    .then(result => {
+      res.send(result);
+    })
+    .catch(err => {
+      console.log(err);
+    });
+});
+
+app.get('/single-blog', (req, res) => {
+  Blog.findById('5ea99b49b8531f40c0fde689')
+    .then(result => {
+      res.send(result);
+    })
+    .catch(err => {
+      console.log(err);
+    });
+});
 
 app.get('/', (req, res) => {
-    const blogs = [
-        {title: 'Bitcoin Price', snippet: 'The recent surge in the price of Bitcoin has once again brought attention to the world of cryptocurrency. While the volatility of the market can be intimidating, its important to remember that cryptocurrency is still in its infancy and has the potential to revolutionize the way we conduct transactions and store value. As we continue to see increased adoption and innovation in the space, its exciting to think about the possibilities of a decentralized financial system that empowers individuals and reduces the influence of centralized institutions. Stay tuned for more updates and insights on the crypto world!'},
-        {title: 'Bitcoin Price', snippet: 'The recent surge in the price of Bitcoin has once again brought attention to the world of cryptocurrency. While the volatility of the market can be intimidating, its important to remember that cryptocurrency is still in its infancy and has the potential to revolutionize the way we conduct transactions and store value. As we continue to see increased adoption and innovation in the space, its exciting to think about the possibilities of a decentralized financial system that empowers individuals and reduces the influence of centralized institutions. Stay tuned for more updates and insights on the crypto world!'},
-        {title: 'Bitcoin Price', snippet: 'The recent surge in the price of Bitcoin has once again brought attention to the world of cryptocurrency. While the volatility of the market can be intimidating, its important to remember that cryptocurrency is still in its infancy and has the potential to revolutionize the way we conduct transactions and store value. As we continue to see increased adoption and innovation in the space, its exciting to think about the possibilities of a decentralized financial system that empowers individuals and reduces the influence of centralized institutions. Stay tuned for more updates and insights on the crypto world!'},
-      ];
-  // res.send('<p>home page</p>');
-  res.render('index',{ title: 'Home',blogs });
+  res.redirect('/blogs');
 });
 
 app.get('/about', (req, res) => {
-  // res.send('<p>about page</p>');
-  res.render('about',{ title: 'About' });
+  res.render('about', { title: 'About' });
 });
 
+// blog routes
 app.get('/blogs/create', (req, res) => {
-    
-    // res.send('<p>about page</p>');
-    res.render('create',{ title: 'Create new blog' });
-  });
+  res.render('create', { title: 'Create a new blog' });
+});
 
-
-
-// redirects
-// app.get('/about-us', (req, res) => {
-//   res.redirect('/about');
-// });
+app.get('/blogs', (req, res) => {
+  Blog.find().sort({ createdAt: -1 })
+    .then(result => {
+      res.render('index', { blogs: result, title: 'All blogs' });
+    })
+    .catch(err => {
+      console.log(err);
+    });
+});
 
 // 404 page
 app.use((req, res) => {
-    res.render('404',{ title: '404' });
+  res.status(404).render('404', { title: '404' });
 });
